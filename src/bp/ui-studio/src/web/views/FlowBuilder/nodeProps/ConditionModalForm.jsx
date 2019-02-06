@@ -4,12 +4,28 @@ import Select from 'react-select'
 import _ from 'lodash'
 import axios from 'axios'
 import style from './style.scss'
+import BPSense from '../common/BPSense'
 
 const availableProps = [
   { label: 'User Data', value: 'user' },
   { label: 'Current User Session', value: 'session' },
   { label: 'Temporary Dialog Context', value: 'temp' }
 ]
+
+const template = {
+  event: {
+    nlu: {
+      intent: {
+        name: ''
+      }
+    },
+    state: {
+      temp: {},
+      user: {},
+      context: {}
+    }
+  }
+}
 
 export default class ConditionModalForm extends Component {
   state = {
@@ -268,7 +284,7 @@ export default class ConditionModalForm extends Component {
   handlePropsTypeChanged = option => this.setState({ matchPropsType: option }, this.updatePropertyMatch)
   handlePropsFieldNameChanged = e => this.setState({ matchPropsFieldName: e.target.value }, this.updatePropertyMatch)
   handlePropsExpressionChanged = e => this.setState({ matchPropsExpression: e.target.value }, this.updatePropertyMatch)
-  handleConditionChanged = e => this.setState({ condition: e.target.value })
+  handleConditionChanged = value => this.setState({ condition: value })
 
   handleMatchIntentChanged = option => {
     this.setState({
@@ -333,14 +349,7 @@ export default class ConditionModalForm extends Component {
   }
 
   renderRawExpression() {
-    return (
-      <FormControl
-        type="text"
-        placeholder="Javascript expression"
-        value={this.state.condition}
-        onChange={this.handleConditionChanged}
-      />
-    )
+    return <BPSense {...template} onChange={this.handleConditionChanged} />
   }
 
   renderConditions() {
