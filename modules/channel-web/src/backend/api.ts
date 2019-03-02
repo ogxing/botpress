@@ -226,6 +226,13 @@ export default async (bp: typeof sdk, db: Database) => {
     const message = await db.appendUserMessage(botId, userId, conversationId, persistedPayload)
 
     bp.realtime.sendPayload(bp.RealTimePayload.forVisitor(userId, 'webchat.message', message))
+    if (message.message_type == "text") {
+      // Actual url to send to bot.   http://localhost:3000/api/v1/bots/test2/mod/channel-web/messages/D3mOCajMyZen3lZ8afkkk
+      // http://localhost:3000/api/v1/bots/${botId}/mod/channel-web/messages/${userID}
+      // Userid can be randomly defined. 21 char length inferred. Any new id will automatically create a new user.
+      // Chatbot receive msg.
+      console.log(`Chatbot Recv: userID: ${message.userId} text: ${message.message_text}`);
+    }
     return bp.events.sendEvent(event)
   }
 

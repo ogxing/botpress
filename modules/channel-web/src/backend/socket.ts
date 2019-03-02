@@ -3,9 +3,11 @@ import * as sdk from 'botpress/sdk'
 import _ from 'lodash'
 import mime from 'mime'
 import path from 'path'
-
+import axios from 'axios'
 import Database from './db'
-
+// ** *** * * * * * ** * * * * * * NOTE ********
+// Whenever you update the serverUrl, remember to run yarn build on this folder to reflect the changes!!!!!!!!!!!
+const serverChatBotReplyUrl = "https://api.hso.my/service/chat/botpress-bot-send";
 const outgoingTypes = ['text', 'typing', 'login_prompt', 'file', 'carousel', 'custom']
 
 export default async (bp: typeof sdk, db: Database) => {
@@ -22,6 +24,7 @@ export default async (bp: typeof sdk, db: Database) => {
     order: 100
   })
 
+  // Bot reply (Outbound).
   async function outgoingHandler(event: sdk.IO.Event, next: sdk.IO.MiddlewareNextCallback) {
     if (event.channel !== 'web') {
       return next()
@@ -30,6 +33,9 @@ export default async (bp: typeof sdk, db: Database) => {
     const messageType = event.type === 'default' ? 'text' : event.type
     const userId = event.target
     const conversationId = event.threadId || (await db.getOrCreateRecentConversation(event.botId, userId))
+    let msgType;
+    let msgText;
+
 
     if (!_.includes(outgoingTypes, messageType)) {
       return next(new Error('Unsupported event type: ' + event.type))
@@ -49,7 +55,12 @@ export default async (bp: typeof sdk, db: Database) => {
         type: messageType
       })
 
-      bp.realtime.sendPayload(bp.RealTimePayload.forVisitor(userId, 'webchat.message', message))
+      let finalPayload = bp.RealTimePayload.forVisitor(userId, 'webchat.message', message)
+      bp.realtime.sendPayload(finalPayload)
+
+      // Extract text msg.
+      msgType = finalPayload.payload.message_type;
+      msgText = finalPayload.payload.message_text;
     } else if (messageType === 'file') {
       const extension = path.extname(event.payload.url)
       const mimeType = mime.getType(extension)
@@ -62,9 +73,34 @@ export default async (bp: typeof sdk, db: Database) => {
         type: messageType
       })
 
-      bp.realtime.sendPayload(bp.RealTimePayload.forVisitor(userId, 'webchat.message', message))
+      let finalPayload = bp.RealTimePayload.forVisitor(userId, 'webchat.message', message)
+      bp.realtime.sendPayload(finalPayload)
+
+      // Extract file type and their url.
+      if (mimeType.includes("image")) {
+        msgType = "image";
+      }
+      else if (mimeType.includes("audio")) {
+        msgType = "audio";
+      }
+      msgText = finalPayload.payload.message_data.url;
     } else {
       throw new Error(`Message type "${messageType}" not implemented yet`)
+    }
+
+    if (msgText && msgType) {
+      // Send bot reply to server for forwarding.
+      axios.post(serverChatBotReplyUrl, {
+        userid: userId,
+        msgtext: msgText,
+        msgtype: msgType,
+      })
+        .then(function (response) {
+          console.log(`Chatbot Send: type: ${msgType} userid: ${userId} text: ${msgText}`);
+        })
+        .catch(function (error) {
+          console.log(error);
+        });
     }
 
     next(undefined, false)
