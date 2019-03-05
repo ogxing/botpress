@@ -10,12 +10,13 @@
  * @param {string} name - The name of the variable. if undefined, will be set to 0.
  */
 const incrementVariable = async (type, name) => {
-    const lastValue = event.state[type][name]
-    if (lastValue) {
-        event.state[type][name] = event.state[type][name] + 1
+    let lastValue = event.state[type][name]
+    if ((typeof lastValue !== 'undefined')) {
+        lastValue = Number(lastValue);
+        event.state[type][name] = lastValue + 1;
     }
     else {
-        event.state[type][name] = 0
+        event.state[type][name] = 0;
     }
 }
 
