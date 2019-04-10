@@ -8,7 +8,7 @@ import Database from './db'
 // ** *** * * * * * ** * * * * * * NOTE ********
 // Whenever you update the serverUrl, remember to run yarn build on this folder to reflect the changes!!!!!!!!!!!
 const serverChatBotReplyUrl = "https://api.hso.my/service/chat/botpress-bot-send";
-const outgoingTypes = ['text', 'typing', 'login_prompt', 'file', 'carousel', 'custom']
+const outgoingTypes = ['text', 'typing', 'login_prompt', 'file', 'carousel', 'custom', 'data']
 
 export default async (bp: typeof sdk, db: Database) => {
   const config: any = {} // FIXME
@@ -47,7 +47,7 @@ export default async (bp: typeof sdk, db: Database) => {
       // Don't store "typing" in DB
       bp.realtime.sendPayload(payload)
       await Promise.delay(typing)
-    } else if (messageType === 'text' || messageType === 'carousel') {
+    } else if (messageType === 'text' || messageType === 'carousel' || messageType === 'custom') {
       const message = await db.appendBotMessage(botName, botAvatarUrl, conversationId, {
         data: event.payload,
         raw: event.payload,
@@ -84,7 +84,13 @@ export default async (bp: typeof sdk, db: Database) => {
         msgType = "audio";
       }
       msgText = finalPayload.payload.message_data.url;
-    } else {
+    }
+    else if (messageType === 'data') {
+      const userId = event.target
+      const payload = bp.RealTimePayload.forVisitor(userId, 'webchat.data', event.payload)
+      bp.realtime.sendPayload(payload)
+    }
+    else {
       throw new Error(`Message type "${messageType}" not implemented yet`)
     }
 

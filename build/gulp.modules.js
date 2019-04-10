@@ -8,8 +8,8 @@ const glob = require('glob')
 const print = require('gulp-print').default
 const mkdirp = require('mkdirp')
 const { symlink } = require('gulp')
-
-const cwd = path.join(__dirname, '../modules')
+const rimraf = require('gulp-rimraf')
+const cwd = path.join(__dirname, '../', process.argv.includes('--private') ? 'private-modules' : 'modules')
 
 const getAllModulesRoot = () => {
   return glob
@@ -34,7 +34,7 @@ const readModuleConfig = modulePath => {
  * modules individually.
  */
 const copySdkDefinitions = () => {
-  let stream = gulp.src('src/bp/sdk/botpress.d.ts')
+  let stream = gulp.src(['src/bp/sdk/botpress.d.ts', 'src/typings/global.d.ts'])
   const modules = getAllModulesRoot()
   for (let m of modules) {
     const src = _.get(readModuleConfig(m), 'botpress.src', 'src')
@@ -76,7 +76,7 @@ const buildModule = (modulePath, cb) => {
 
 const packageModule = (modulePath, cb) => {
   exec(
-    `./node_modules/.bin/module-builder package -v --out ../../out/binaries/modules/%name%.tgz`,
+    `cross-env ./node_modules/.bin/module-builder package -v --out ../../out/binaries/modules/%name%.tgz`,
     { cwd: modulePath },
     (err, stdout, stderr) => {
       if (err) {
@@ -142,13 +142,25 @@ const buildSdk = () => {
   return gulp.series([copySdkDefinitions])
 }
 
-const createModuleAssetsSymlink = cb => {
+const cleanModuleAssets = () => {
   const moduleName = _.last(process.argv)
+  return gulp.src(`./out/bp/assets/modules/${moduleName}`, { allowEmpty: true }).pipe(rimraf())
+}
 
-  console.log(`Creating symlink for module "${moduleName}"`)
+const createModuleSymlink = () => {
+  const moduleFolder = process.argv.includes('--private') ? 'private-modules' : 'modules'
+  const moduleName = _.last(process.argv)
   return gulp
-    .src(`./modules/${moduleName}/assets/`)
+    .src(`./${moduleFolder}/${moduleName}/assets/`)
     .pipe(symlink(`./out/bp/assets/modules/${moduleName}/`, { type: 'dir' }))
 }
 
-module.exports = { build, buildSdk, buildModules, packageModules, buildModuleBuilder, createModuleAssetsSymlink }
+module.exports = {
+  build,
+  buildSdk,
+  buildModules,
+  packageModules,
+  buildModuleBuilder,
+  cleanModuleAssets,
+  createModuleSymlink
+}

@@ -1,5 +1,6 @@
 import 'bluebird-global'
 import * as sdk from 'botpress/sdk'
+import _ from 'lodash'
 
 import ScopedEngine from './engine'
 import { EngineByBot } from './typings'
@@ -26,8 +27,9 @@ export const registerMiddleware = async (bp: typeof sdk, botScopedNlu: EngineByB
       }
 
       try {
-        const metadata = await botCtx.extract(event)
-        Object.assign(event, { nlu: metadata })
+        const metadata = await botCtx.extract(event.preview, event.nlu.includedContexts)
+        _.merge(event, { nlu: metadata })
+        removeSensitiveText(event)
       } catch (err) {
         bp.logger.warn('Error extracting metadata for incoming text: ' + err.message)
       } finally {
@@ -35,4 +37,20 @@ export const registerMiddleware = async (bp: typeof sdk, botScopedNlu: EngineByB
       }
     }
   })
+
+  function removeSensitiveText(event) {
+    if (!event.nlu.entities || !event.payload.text) {
+      return
+    }
+
+    try {
+      const sensitiveEntities = event.nlu.entities.filter(ent => ent.sensitive)
+      for (const entity of sensitiveEntities) {
+        const stars = '*'.repeat(entity.data.value.length)
+        event.payload.text = event.payload.text.replace(entity.data.value, stars)
+      }
+    } catch (err) {
+      bp.logger.warn('Error removing sensitive informations: ' + err.message)
+    }
+  }
 }

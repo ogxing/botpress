@@ -6,12 +6,14 @@ import _ from 'lodash'
 import { NodeVM } from 'vm2'
 
 import { container } from '../../../app.inversify'
-import { renderRecursive } from '../../../misc/templating'
+import { renderTemplate } from '../../../misc/templating'
 import { TYPES } from '../../../types'
 import ActionService from '../../action/action-service'
 import { VmRunner } from '../../action/vm'
 
 import { Instruction, InstructionType, ProcessingResult } from '.'
+
+const debug = DEBUG('dialog')
 
 @injectable()
 export class StrategyFactory {
@@ -69,7 +71,7 @@ export class ActionStrategy implements InstructionStrategy {
       }
     }
 
-    this.logger.debug(`SEND "${outputType}"`)
+    debug.forBot(botId, `[${event.target}] render element "${outputType}"`)
 
     const message: IO.DialogTurnHistory = {
       incomingPreview: event.preview,
@@ -79,14 +81,19 @@ export class ActionStrategy implements InstructionStrategy {
       replyPreview: outputType
     }
 
-    event.state.session.lastMessages.push(message)
+    if (!event.state.session.lastMessages) {
+      event.state.session.lastMessages = [message]
+    } else {
+      event.state.session.lastMessages.push(message)
+    }
 
     args = {
       ...args,
       event,
       user: _.get(event, 'state.user', {}),
       session: _.get(event, 'state.session', {}),
-      temp: _.get(event, 'state.temp', {})
+      temp: _.get(event, 'state.temp', {}),
+      bot: _.get(event, 'state.bot', {})
     }
 
     const eventDestination = _.pick(event, ['channel', 'target', 'botId', 'threadId'])
@@ -114,11 +121,13 @@ export class ActionStrategy implements InstructionStrategy {
       event,
       user: _.get(event, 'state.user', {}),
       session: _.get(event, 'state.session', {}),
-      temp: _.get(event, 'state.temp', {})
+      temp: _.get(event, 'state.temp', {}),
+      bot: _.get(event, 'state.bot', {})
     }
 
-    args = _.mapValues(args, value => renderRecursive(value, actionArgs))
+    args = _.mapValues(args, value => renderTemplate(value, actionArgs))
 
+    debug.forBot(botId, `[${event.target}] execute action "${actionName}"`)
     const hasAction = await this.actionService.forBot(botId).hasAction(actionName)
     if (!hasAction) {
       throw new Error(`Action "${actionName}" not found, `)
@@ -146,7 +155,12 @@ export class TransitionStrategy implements InstructionStrategy {
     })
 
     if (conditionSuccessful) {
-      this.logger.forBot(botId).debug(`EVAL "${instruction.fn}" ON [${instruction.node}]`)
+      debug.forBot(
+        botId,
+        `[${event.target}] eval transition "${instruction.fn === 'true' ? 'always' : instruction.fn}" to [${
+          instruction.node
+        }]`
+      )
       return ProcessingResult.transition(instruction.node)
     } else {
       return ProcessingResult.none()
