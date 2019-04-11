@@ -24,7 +24,7 @@ export class DialogEngine {
     @inject(TYPES.Logger) private logger: Logger,
     @inject(TYPES.FlowService) private flowService: FlowService,
     @inject(TYPES.InstructionProcessor) private instructionProcessor: InstructionProcessor
-  ) {}
+  ) { }
 
   public async processEvent(sessionId: string, event: IO.IncomingEvent): Promise<IO.IncomingEvent> {
     const botId = event.botId
@@ -123,9 +123,8 @@ export class DialogEngine {
       }
       return undefined
     }
-
-    const currentFlow = this._findFlow(botId, event.state.context.currentFlow!)
-    const currentNode = findNodeWithoutError(currentFlow, event.state.context.currentNode)
+    const currentFlow = event.state.context ? this._findFlow(botId, event.state.context.currentFlow!) : undefined;
+    const currentNode = event.state.context ? findNodeWithoutError(currentFlow, event.state.context.currentNode) : undefined;
 
     // Check for a timeout property in the current node
     let timeoutNode = _.get(currentNode, 'timeout')
@@ -157,6 +156,8 @@ export class DialogEngine {
       throw new Error(`Could not find any timeout node for session "${sessionId}"`)
     }
 
+    event.state.context = {};
+    event.state.session = { lastMessages: [] };
     event.state.context.currentNode = timeoutNode.name
     event.state.context.currentFlow = timeoutFlow.name
     event.state.context.hasJumped = true
