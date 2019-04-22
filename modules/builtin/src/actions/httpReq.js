@@ -14,13 +14,32 @@
  */
 const httpReq = async (url, method, json, type, name) => {
     const axios = require('axios');
-
     // Convert all escaped character back to original.
     let parsedJson = JSON.parse(json);
     Object.keys(parsedJson).forEach(function (key) {
         let val = parsedJson[key];
         if (typeof val === "string") {
             parsedJson[key] = val.replace(/&#x2F;/g, "/");
+
+            // Unpack state variable directly using special [[ ]] syntax.
+            if (val.includes("[[") && val.includes("]]")) {
+                val = val.replace("[[", "");
+                val = val.replace("]]", "");
+                val = val.trim();
+                let keys = val.split(".");
+                if (keys.length == 2) {
+                    parsedJson[key] = event.state[keys[0]][keys[1]];
+                }
+                else if (keys.length == 3) {
+                    parsedJson[key] = event.state[keys[0]][keys[1]][keys[2]];
+                }
+                else if (keys.length == 4) {
+                    parsedJson[key] = event.state[keys[0]][keys[1]][keys[2]][keys[3]];
+                }
+                else if (keys.length == 5) {
+                    parsedJson[key] = event.state[keys[0]][keys[1]][keys[2]][keys[3]][keys[4]];
+                }
+            }
         }
     });
 
