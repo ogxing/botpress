@@ -8,7 +8,7 @@ import Database from './db'
 // ** *** * * * * * ** * * * * * * NOTE ********
 // Whenever you update the serverUrl, remember to run yarn build on this folder to reflect the changes!!!!!!!!!!!
 const test = false;
-const serverChatBotReplyUrl = test ? "https://dapi.hso.my/service/chat/botpress-bot-send" : "https://api.hso.my/service/chat/botpress-bot-send";
+const serverChatBotReplyUrl = test ? "https://dapi.ucc.chat/service/chat/botpress-bot-send" : "https://api.ucc.chat/service/chat/botpress-bot-send";
 const outgoingTypes = ['text', 'typing', 'login_prompt', 'file', 'carousel', 'custom', 'data']
 
 export default async (bp: typeof sdk, db: Database) => {
