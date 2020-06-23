@@ -50,7 +50,8 @@ const httpReq = async (url, method, json, type, name) => {
     }
     else if (method.toLowerCase() == "get") {
         const res = await axios.get(url, { params: parsedJson });
-        event.state[type][name] = res;
+        console.log(res.data);
+        event.state[type][name] = res.data;
     }
 }
 
